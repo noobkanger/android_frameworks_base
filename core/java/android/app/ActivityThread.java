@@ -7063,6 +7063,7 @@ public final class ActivityThread extends ClientTransactionHandler
     public final IContentProvider acquireProvider(
             Context c, String auth, int userId, boolean stable) {
         final IContentProvider provider = acquireExistingProvider(c, auth, userId, stable);
+        mProviderAcquired = false;
         if (provider != null) {
             return provider;
         }
@@ -7084,7 +7085,9 @@ public final class ActivityThread extends ClientTransactionHandler
                 if (holder != null && holder.provider == null && !holder.mLocal) {
                     synchronized (key.mLock) {
                         if (mProviderAcquired && key.mHolder != null) {
-                                mProviderAcquired = true;
+                            if (DEBUG_PROVIDER) {
+                                Slog.i(TAG, "already received provider: " + auth);
+                            }
                         } else {
                             if (!mProviderAcquired) {
                                 key.mLock.wait(ContentResolver.CONTENT_PROVIDER_READY_TIMEOUT_MILLIS);
@@ -7471,7 +7474,7 @@ public final class ActivityThread extends ClientTransactionHandler
             boolean noisy, boolean noReleaseNeeded, boolean stable) {
         ContentProvider localProvider = null;
         IContentProvider provider;
-        if (holder == null || holder.provider == null) {
+        if ((holder == null || holder.provider == null) && !mProviderAcquired) {
             if (DEBUG_PROVIDER || noisy) {
                 Slog.d(TAG, "Loading provider " + info.authority + ": "
                         + info.name);
